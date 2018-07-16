@@ -1,0 +1,16 @@
+{
+    "name": "leaseweb/lint-php",
+    "description": "A command line tool to lint multiple PHP files",
+    "type": "package",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Valdir Bruxel Junior",
+            "email": "v.bruxeljunior@global.leaseweb.com"
+        }
+    ],
+    "bin": [
+        "bin/lint-php"
+    ],
+    "require": {}
+}

@@ -1,0 +1,97 @@
+#! /bin/bash
+
+LINTS_PER_LINE=64
+
+echo "PHP Lint, by Valdir Bruxel Junior and contributors"
+echo
+
+FILES=""
+INPUTS="$@"
+
+for INPUT in ${INPUTS}; do
+    if [ -d "${INPUT}" ]; then
+        FILES+="$( find ${INPUT} -type f -name *.php )"$'\n'
+    else
+        FILES+="${INPUT}"$'\n'
+    fi
+done
+
+TOTAL=$( echo "${FILES}" | wc -w )
+
+if [ 0 -eq "${TOTAL}" ]; then
+    echo "no files to validate"
+    exit 2
+fi
+
+CURRENT=0
+FAILED_FILES=""
+SKIPPED_FILES=""
+VALIDATED_FILES=""
+
+# iterates over all files under git control
+for file in ${FILES}; do
+    CURRENT=$(( CURRENT + 1 ))
+
+    # actually lints the php code
+    if [ -f "${file}" ]; then
+        php -l "${file}" &> /dev/null
+
+        # shows a simple dot if file parsed successfully
+        if [ $? -eq 0 ]; then
+            echo -n '.'
+            VALIDATED_FILES+=" ${file}"
+        else
+            # shows an E for file with error
+            echo -n -e "\033[1;91mE\033[0m"
+            FAILED_FILES+=" ${file}"
+        fi
+    else
+        echo -n -e "\033[1;93mS\033[0m"
+        SKIPPED_FILES+=" ${file}"
+    fi
+
+    let "REMAINDER = $CURRENT % $LINTS_PER_LINE"
+    if [ 0 -eq ${REMAINDER} ] || [ $CURRENT -eq $TOTAL ]; then
+        echo " ${CURRENT}/${TOTAL}"
+    fi
+done
+
+echo
+echo -n "Validation finished ("
+echo -n ${TOTAL} "files, "
+echo -n $( echo "$VALIDATED_FILES" | wc -w ) "valid, "
+echo -n $( echo "$FAILED_FILES" | wc -w ) "errors, "
+echo -n $( echo "$SKIPPED_FILES" | wc -w ) "skipped"
+echo ")"
+echo
+
+# lists all skipped files
+if [ 0 -ne $( echo "$SKIPPED_FILES" | wc -w ) ]; then
+    echo "Skipped" $( echo "$SKIPPED_FILES" | wc -w ) "file(s):"
+    echo
+
+    CURRENT=0
+    for file in ${SKIPPED_FILES}; do
+        CURRENT=$(( CURRENT + 1 ))
+        printf "%5s) %s\n" "${CURRENT}" "${file}"
+    done
+    echo
+fi
+
+# lists all failed files
+# re-validates them (so we can see the errors)
+# and exit with erro
+if [ 0 -ne $( echo "$FAILED_FILES" | wc -w ) ]; then
+    echo "There were" $( echo "$FAILED_FILES" | wc -w ) "file(s) with syntax errors:"
+
+    CURRENT=0
+    for file in ${FAILED_FILES}; do
+        CURRENT=$(( CURRENT + 1 ))
+        echo
+        printf "%5s) %s\n" "${CURRENT}" "${file}"
+        php -l "${file}" 2>&1 | sed 's/^/       /'
+    done
+    echo
+
+    exit 1
+fi
